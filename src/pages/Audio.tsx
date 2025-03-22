@@ -1,4 +1,3 @@
-
 import { Navbar } from "@/components/Navbar";
 import { AudioPlayer } from "@/components/ContentPlayer";
 import { Rating } from "@/components/Rating";
@@ -6,6 +5,7 @@ import { CommentSection } from "@/components/CommentSection";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { ContentCard, ContentCardProps } from "@/components/ContentCard";
+import { Footer } from "@/components/Footer";
 
 // Mock audio data
 const audioData = {
@@ -161,13 +161,7 @@ const Audio = () => {
         </div>
       </main>
       
-      <footer className="py-6 border-t border-white/10 glass">
-        <div className="container">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} DAARUL ILMI - Rumah Digital Tempatnya Ilmu
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

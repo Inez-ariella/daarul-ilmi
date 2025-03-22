@@ -3,6 +3,7 @@ import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
 import { FeaturedContent } from "@/components/FeaturedContent";
 import { SearchBar } from "@/components/SearchBar";
+import { Footer } from "@/components/Footer";
 
 const Index = () => {
   return (
@@ -41,13 +42,7 @@ const Index = () => {
         </section>
       </main>
       
-      <footer className="py-6 border-t border-white/10 glass">
-        <div className="container">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} DAARUL ILMI - Rumah Digital Tempatnya Ilmu
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

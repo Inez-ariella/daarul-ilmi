@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
 
 const NotFound = () => {
   const location = useLocation();
@@ -30,13 +31,7 @@ const NotFound = () => {
         </div>
       </main>
       
-      <footer className="py-6 border-t border-white/10 glass">
-        <div className="container">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} DAARUL ILMI - Rumah Digital Tempatnya Ilmu
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

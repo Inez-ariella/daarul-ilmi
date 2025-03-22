@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Footer } from "@/components/Footer";
 
 const Login = () => {
   const { isAuthenticated } = useAuth();
@@ -36,13 +37,7 @@ const Login = () => {
         </div>
       </main>
       
-      <footer className="py-6 border-t border-white/10 glass">
-        <div className="container">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} DAARUL ILMI - Rumah Digital Tempatnya Ilmu
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

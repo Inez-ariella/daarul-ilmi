@@ -1,4 +1,3 @@
-
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Footer } from "@/components/Footer";
 
 // Mock user activity data
 const userActivity = {
@@ -269,13 +269,7 @@ const Profile = () => {
         </div>
       </main>
       
-      <footer className="py-6 border-t border-white/10 glass mt-auto">
-        <div className="container">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} DAARUL ILMI - Rumah Digital Tempatnya Ilmu
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
