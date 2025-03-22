@@ -5,7 +5,7 @@ import { Rating } from "@/components/Rating";
 import { CommentSection } from "@/components/CommentSection";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { ContentCard } from "@/components/ContentCard";
+import { ContentCard, ContentCardProps } from "@/components/ContentCard";
 
 // Mock audio data
 const audioData = {
@@ -52,7 +52,7 @@ const relatedAudios = [
     title: "Keutamaan Bulan Ramadhan",
     description: "Kajian tentang keutamaan dan amalan di bulan suci Ramadhan.",
     image: "https://source.unsplash.com/random/800x600/?ramadan",
-    type: "audio",
+    type: "audio" as "audio", // Fixed: explicitly casting to literal type
     rating: 4.6,
     date: "12 April 2023",
     duration: "28:45"
@@ -62,7 +62,7 @@ const relatedAudios = [
     title: "Akhlak dalam Bermuamalah",
     description: "Pentingnya akhlak dalam berinteraksi dan bertransaksi dengan sesama manusia.",
     image: "https://source.unsplash.com/random/800x600/?people",
-    type: "audio",
+    type: "audio" as "audio", // Fixed: explicitly casting to literal type
     rating: 4.7,
     date: "20 Juni 2023",
     duration: "41:20"
@@ -72,7 +72,7 @@ const relatedAudios = [
     title: "Menjaga Kebersihan sebagai Bagian dari Iman",
     description: "Kajian tentang pentingnya kebersihan dalam Islam dan hubungannya dengan keimanan.",
     image: "https://source.unsplash.com/random/800x600/?clean",
-    type: "audio",
+    type: "audio" as "audio", // Fixed: explicitly casting to literal type
     rating: 4.5,
     date: "8 Juli 2023",
     duration: "25:30"

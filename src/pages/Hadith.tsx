@@ -4,7 +4,7 @@ import { Rating } from "@/components/Rating";
 import { CommentSection } from "@/components/CommentSection";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { ContentCard } from "@/components/ContentCard";
+import { ContentCard, ContentCardProps } from "@/components/ContentCard";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -56,7 +56,7 @@ const relatedHadiths = [
     title: "Hadits tentang Niat dalam Beramal",
     description: "Kumpulan hadits yang membahas pentingnya niat dalam melakukan setiap amalan.",
     image: "https://source.unsplash.com/random/800x600/?heart",
-    type: "hadith",
+    type: "hadith" as "hadith", // Fixed: explicitly casting to literal type
     rating: 4.8,
     date: "3 Februari 2023",
   },
@@ -65,7 +65,7 @@ const relatedHadiths = [
     title: "Hadits Qudsi: Firman Allah yang Diriwayatkan Rasulullah",
     description: "Penjelasan tentang hadits-hadits qudsi dan perbedaannya dengan hadits nabawi.",
     image: "https://source.unsplash.com/random/800x600/?sky",
-    type: "hadith",
+    type: "hadith" as "hadith", // Fixed: explicitly casting to literal type
     rating: 4.9,
     date: "22 Maret 2023",
   },
@@ -74,7 +74,7 @@ const relatedHadiths = [
     title: "Hadits tentang Berbakti kepada Orang Tua",
     description: "Kumpulan hadits yang membahas keutamaan dan cara berbakti kepada kedua orang tua.",
     image: "https://source.unsplash.com/random/800x600/?family",
-    type: "hadith",
+    type: "hadith" as "hadith", // Fixed: explicitly casting to literal type
     rating: 4.7,
     date: "10 April 2023",
   },

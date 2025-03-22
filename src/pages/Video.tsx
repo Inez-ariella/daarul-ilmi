@@ -5,7 +5,7 @@ import { Rating } from "@/components/Rating";
 import { CommentSection } from "@/components/CommentSection";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { ContentCard } from "@/components/ContentCard";
+import { ContentCard, ContentCardProps } from "@/components/ContentCard";
 
 // Mock video data
 const videoData = {
@@ -52,7 +52,7 @@ const relatedVideos = [
     title: "Fiqih Shalat: Tuntunan Shalat Yang Benar",
     description: "Pembelajaran mendetail tentang tata cara shalat yang sesuai dengan sunnah Rasulullah SAW.",
     image: "https://source.unsplash.com/random/800x600/?prayer",
-    type: "video",
+    type: "video" as "video", // Fixed: explicitly casting to literal type
     rating: 4.7,
     date: "25 Juli 2023",
     duration: "56:15"
@@ -62,7 +62,7 @@ const relatedVideos = [
     title: "Adab Mencari Ilmu dalam Islam",
     description: "Membahas etika dan adab dalam mencari ilmu menurut perspektif Islam.",
     image: "https://source.unsplash.com/random/800x600/?study",
-    type: "video",
+    type: "video" as "video", // Fixed: explicitly casting to literal type
     rating: 4.9,
     date: "3 Agustus 2023",
     duration: "38:45"
@@ -72,7 +72,7 @@ const relatedVideos = [
     title: "Sirah Nabawiyah: Kehidupan Rasulullah SAW",
     description: "Seri pembelajaran tentang kehidupan dan perjalanan Nabi Muhammad SAW dari kelahiran hingga wafatnya.",
     image: "https://source.unsplash.com/random/800x600/?desert",
-    type: "video",
+    type: "video" as "video", // Fixed: explicitly casting to literal type
     rating: 5.0,
     date: "17 September 2023",
     duration: "1:10:30"
