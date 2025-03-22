@@ -1,12 +1,53 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { Navbar } from "@/components/Navbar";
+import { Hero } from "@/components/Hero";
+import { FeaturedContent } from "@/components/FeaturedContent";
+import { SearchBar } from "@/components/SearchBar";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen flex flex-col page-transition">
+      <Navbar />
+      
+      <main className="flex-1">
+        <Hero />
+        
+        <section className="py-20 bg-white/50 dark:bg-black/50 relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-background to-transparent z-0 h-32"></div>
+          <div className="container relative z-10">
+            <div className="max-w-xl mx-auto mb-12">
+              <h2 className="text-2xl font-bold text-center mb-6">Temukan Kajian</h2>
+              <SearchBar />
+            </div>
+            
+            <FeaturedContent 
+              title="Video Pembelajaran" 
+              subtitle="Kumpulan video kajian Islam terbaru"
+              contentType="video"
+            />
+            
+            <FeaturedContent 
+              title="Audio Kajian" 
+              subtitle="Dengarkan ceramah kapan saja"
+              contentType="audio"
+            />
+            
+            <FeaturedContent 
+              title="Kumpulan Hadits" 
+              subtitle="Hadits pilihan dengan terjemahan"
+              contentType="hadith"
+            />
+          </div>
+        </section>
+      </main>
+      
+      <footer className="py-6 border-t border-white/10 glass">
+        <div className="container">
+          <p className="text-sm text-muted-foreground">
+            © {new Date().getFullYear()} DAARUL ILMI - Rumah Digital Tempatnya Ilmu
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };

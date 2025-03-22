@@ -1,5 +1,9 @@
+
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { Navbar } from "@/components/Navbar";
 
 const NotFound = () => {
   const location = useLocation();
@@ -12,14 +16,27 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
-        </a>
-      </div>
+    <div className="min-h-screen flex flex-col page-transition">
+      <Navbar />
+      
+      <main className="flex-1 flex items-center justify-center p-4">
+        <div className="text-center space-y-6 max-w-md px-4 py-10 glass-card rounded-xl animate-fade-in-up">
+          <h1 className="text-6xl font-bold">404</h1>
+          <p className="text-xl text-muted-foreground">Halaman tidak ditemukan</p>
+          <p className="text-muted-foreground">Maaf, halaman yang Anda cari tidak dapat ditemukan atau telah dipindahkan.</p>
+          <Button size="lg" asChild className="mt-4">
+            <Link to="/">Kembali ke Beranda</Link>
+          </Button>
+        </div>
+      </main>
+      
+      <footer className="py-6 border-t border-white/10 glass">
+        <div className="container">
+          <p className="text-sm text-muted-foreground">
+            © {new Date().getFullYear()} DAARUL ILMI - Rumah Digital Tempatnya Ilmu
+          </p>
+        </div>
+      </footer>
     </div>
   );
 };
