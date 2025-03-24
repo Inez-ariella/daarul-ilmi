@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -40,62 +40,215 @@ import {
   MoreVertical, 
   Pencil, 
   Trash2, 
-  Play 
+  Play,
+  AlertCircle,
+  Loader2
 } from "lucide-react";
+import { FileUploader } from "@/components/ui/file-uploader";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// Define the form schema
+const audioFormSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  category: z.string().optional(),
+  duration: z.string().optional(),
+  file_url: z.string().url("A valid file URL is required"),
+  thumbnail_url: z.string().url("A valid thumbnail URL is required").optional(),
+  file_type: z.string(),
+  file_size: z.number()
+});
+
+type AudioFormValues = z.infer<typeof audioFormSchema>;
+
+// Define the audio data type
+interface Audio {
+  id: string;
+  title: string;
+  description: string;
+  file_url: string;
+  thumbnail_url?: string;
+  file_type: string;
+  file_size?: number;
+  duration?: string;
+  category?: string;
+  created_at: string;
+}
 
 export const AdminAudios = () => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedAudio, setSelectedAudio] = useState<Audio | null>(null);
+  const [audios, setAudios] = useState<Audio[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // Mock audio data
-  const audios = [
-    {
-      id: "1",
-      title: "Ceramah Jumat: Keutamaan Ramadhan",
-      description: "Ustadz Ahmad membahas keutamaan bulan Ramadhan dan ibadah di dalamnya.",
-      duration: "25:12",
-      date: "2024-06-14",
-      plays: 987,
-      ratings: 4.7
-    },
-    {
-      id: "2",
-      title: "Tafsir Surah Yasin",
-      description: "Penjelasan mendalam tentang makna dan tafsir Surah Yasin.",
-      duration: "32:45",
-      date: "2024-06-08",
-      plays: 876,
-      ratings: 4.8
-    },
-    {
-      id: "3",
-      title: "Murottal Juz 30",
-      description: "Bacaan Al-Quran Juz 30 dengan tajwid yang benar.",
-      duration: "48:30",
-      date: "2024-06-02",
-      plays: 1234,
-      ratings: 4.9
-    },
-    {
-      id: "4",
-      title: "Kisah Para Sahabat Nabi",
-      description: "Kisah inspiratif dari kehidupan para sahabat Nabi Muhammad SAW.",
-      duration: "35:18",
-      date: "2024-05-25",
-      plays: 765,
-      ratings: 4.6
-    },
-    {
-      id: "5",
-      title: "Doa-doa Harian",
-      description: "Kumpulan doa-doa yang dibaca dalam kehidupan sehari-hari seorang muslim.",
-      duration: "22:40",
-      date: "2024-05-15",
-      plays: 654,
-      ratings: 4.7
+  // Initialize form
+  const form = useForm<AudioFormValues>({
+    resolver: zodResolver(audioFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      duration: "",
+      file_url: "",
+      file_type: "",
+      file_size: 0
     }
-  ];
-  
+  });
+
+  // Fetch audio data
+  const fetchAudios = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase
+        .from('media_files')
+        .select('*')
+        .eq('file_type', 'audio/mpeg')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        throw error;
+      }
+      
+      setAudios(data || []);
+    } catch (err: any) {
+      console.error('Error fetching audios:', err);
+      setError(err.message || 'An error occurred while fetching audio files');
+      toast({
+        variant: "destructive",
+        title: "Error fetching audio files",
+        description: err.message || 'An error occurred while fetching audio files',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchAudios();
+  }, []);
+
+  // Handle file upload complete
+  const handleFileUploadComplete = (fileUrl: string, fileType: string, fileSize: number) => {
+    form.setValue("file_url", fileUrl);
+    form.setValue("file_type", fileType);
+    form.setValue("file_size", fileSize);
+  };
+
+  // Handle form submission
+  const onSubmit = async (values: AudioFormValues) => {
+    try {
+      // Insert the new audio record
+      const { data, error } = await supabase
+        .from('media_files')
+        .insert([{
+          title: values.title,
+          description: values.description,
+          file_url: values.file_url,
+          thumbnail_url: values.thumbnail_url || null,
+          file_type: values.file_type,
+          file_size: values.file_size,
+          duration: values.duration || null,
+          category: values.category || null
+        }])
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Reset form and close the dialog
+      form.reset();
+      setIsAddDialogOpen(false);
+      
+      // Update the audio list
+      fetchAudios();
+      
+      toast({
+        title: "Audio added successfully",
+        description: `${values.title} has been added to the audio collection.`,
+      });
+    } catch (err: any) {
+      console.error('Error adding audio:', err);
+      toast({
+        variant: "destructive",
+        title: "Error adding audio",
+        description: err.message || 'An error occurred while adding the audio',
+      });
+    }
+  };
+
+  // Handle audio deletion
+  const handleDeleteAudio = async () => {
+    if (!selectedAudio) return;
+    
+    try {
+      // Delete the audio record
+      const { error } = await supabase
+        .from('media_files')
+        .delete()
+        .eq('id', selectedAudio.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Extract the file path from the URL
+      const fileUrl = new URL(selectedAudio.file_url);
+      const filePath = fileUrl.pathname.split('/').pop();
+      
+      if (filePath) {
+        // Delete the file from storage
+        const { error: storageError } = await supabase.storage
+          .from('media-files')
+          .remove([filePath]);
+        
+        if (storageError) {
+          console.error('Error deleting file from storage:', storageError);
+        }
+      }
+      
+      // Close the dialog and reset the selected audio
+      setIsDeleteDialogOpen(false);
+      setSelectedAudio(null);
+      
+      // Update the audio list
+      fetchAudios();
+      
+      toast({
+        title: "Audio deleted successfully",
+        description: `${selectedAudio.title} has been removed from the audio collection.`,
+      });
+    } catch (err: any) {
+      console.error('Error deleting audio:', err);
+      toast({
+        variant: "destructive",
+        title: "Error deleting audio",
+        description: err.message || 'An error occurred while deleting the audio',
+      });
+    }
+  };
+
+  // Filter audios based on search term
   const filteredAudios = audios.filter(audio => 
     audio.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     audio.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -112,55 +265,121 @@ export const AdminAudios = () => {
               Tambah Audio
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Tambah Audio Baru</DialogTitle>
               <DialogDescription>
                 Isi informasi audio yang ingin ditambahkan ke koleksi.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Judul Audio</Label>
-                <Input id="title" placeholder="Masukkan judul audio" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Deskripsi</Label>
-                <Textarea 
-                  id="description" 
-                  placeholder="Masukkan deskripsi audio"
-                  className="min-h-[100px]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="audio-file">File Audio</Label>
-                  <Input id="audio-file" type="file" accept="audio/*" />
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Judul Audio</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Masukkan judul audio" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Deskripsi</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Masukkan deskripsi audio"
+                              className="min-h-[100px]"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <FormLabel>File Audio</FormLabel>
+                    <FileUploader 
+                      onUploadComplete={handleFileUploadComplete}
+                      acceptedFileTypes="audio/*"
+                    />
+                    {form.formState.errors.file_url && (
+                      <p className="text-sm font-medium text-destructive">
+                        {form.formState.errors.file_url.message}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="duration"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Durasi</FormLabel>
+                          <FormControl>
+                            <Input placeholder="HH:MM:SS" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kategori</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Kategori audio" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="thumbnail_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL Thumbnail (opsional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://example.com/image.jpg" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="thumbnail">Thumbnail</Label>
-                  <Input id="thumbnail" type="file" accept="image/*" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="duration">Durasi</Label>
-                  <Input id="duration" placeholder="HH:MM:SS" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Kategori</Label>
-                  <Input id="category" placeholder="Kategori audio" />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Batal
-              </Button>
-              <Button onClick={() => setIsAddDialogOpen(false)}>
-                Simpan
-              </Button>
-            </DialogFooter>
+                
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Batal
+                  </Button>
+                  <Button type="submit" disabled={!form.formState.isValid}>
+                    Simpan
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
@@ -182,63 +401,121 @@ export const AdminAudios = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Judul</TableHead>
-                <TableHead>Durasi</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead className="text-right">Plays</TableHead>
-                <TableHead className="text-right">Rating</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAudios.length > 0 ? (
-                filteredAudios.map((audio) => (
-                  <TableRow key={audio.id}>
-                    <TableCell className="font-medium">{audio.title}</TableCell>
-                    <TableCell>{audio.duration}</TableCell>
-                    <TableCell>{new Date(audio.date).toLocaleDateString('id-ID')}</TableCell>
-                    <TableCell className="text-right">{audio.plays}</TableCell>
-                    <TableCell className="text-right">{audio.ratings}/5</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Aksi</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Play className="mr-2 h-4 w-4" />
-                            <span>Putar</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            <span>Edit</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Hapus</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {isLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Judul</TableHead>
+                  <TableHead>Durasi</TableHead>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead>Ukuran</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAudios.length > 0 ? (
+                  filteredAudios.map((audio) => (
+                    <TableRow key={audio.id}>
+                      <TableCell className="font-medium">{audio.title}</TableCell>
+                      <TableCell>{audio.duration || "N/A"}</TableCell>
+                      <TableCell>
+                        {new Date(audio.created_at).toLocaleDateString('id-ID')}
+                      </TableCell>
+                      <TableCell>{audio.category || "N/A"}</TableCell>
+                      <TableCell>
+                        {audio.file_size 
+                          ? `${(audio.file_size / (1024 * 1024)).toFixed(2)} MB`
+                          : "N/A"
+                        }
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Aksi</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                window.open(audio.file_url, "_blank");
+                              }}
+                            >
+                              <Play className="mr-2 h-4 w-4" />
+                              <span>Putar</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                // Edit functionality would go here
+                                toast({
+                                  title: "Coming soon",
+                                  description: "Edit functionality will be available soon.",
+                                });
+                              }}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>Edit</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => {
+                                setSelectedAudio(audio);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Hapus</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      {searchTerm ? "Tidak ada audio yang sesuai dengan pencarian." : "Belum ada audio yang ditambahkan."}
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    Tidak ada audio yang ditemukan.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Hapus</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus audio "{selectedAudio?.title}"? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteAudio}>
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

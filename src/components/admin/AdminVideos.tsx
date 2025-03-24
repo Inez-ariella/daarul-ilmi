@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Card, 
   CardContent, 
@@ -40,62 +40,215 @@ import {
   MoreVertical, 
   Pencil, 
   Trash2, 
-  Eye 
+  Play,
+  AlertCircle,
+  Loader2
 } from "lucide-react";
+import { FileUploader } from "@/components/ui/file-uploader";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+
+// Define the form schema
+const videoFormSchema = z.object({
+  title: z.string().min(3, "Title must be at least 3 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  category: z.string().optional(),
+  duration: z.string().optional(),
+  file_url: z.string().url("A valid file URL is required"),
+  thumbnail_url: z.string().url("A valid thumbnail URL is required").optional(),
+  file_type: z.string(),
+  file_size: z.number()
+});
+
+type VideoFormValues = z.infer<typeof videoFormSchema>;
+
+// Define the video data type
+interface Video {
+  id: string;
+  title: string;
+  description: string;
+  file_url: string;
+  thumbnail_url?: string;
+  file_type: string;
+  file_size?: number;
+  duration?: string;
+  category?: string;
+  created_at: string;
+}
 
 export const AdminVideos = () => {
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // Mock video data
-  const videos = [
-    {
-      id: "1",
-      title: "Kajian Tauhid: Mengenal Allah",
-      description: "Ustadz Ahmad membahas konsep dasar tauhid dan mengenal Allah SWT.",
-      duration: "45:23",
-      date: "2024-06-15",
-      views: 1234,
-      ratings: 4.8
-    },
-    {
-      id: "2",
-      title: "Fiqih Ibadah: Tata Cara Shalat",
-      description: "Panduan lengkap tentang tata cara shalat yang benar sesuai sunnah.",
-      duration: "38:15",
-      date: "2024-06-10",
-      views: 987,
-      ratings: 4.6
-    },
-    {
-      id: "3",
-      title: "Adab dalam Islam",
-      description: "Pembahasan tentang adab dan akhlak dalam kehidupan sehari-hari seorang muslim.",
-      duration: "42:30",
-      date: "2024-06-05",
-      views: 876,
-      ratings: 4.7
-    },
-    {
-      id: "4",
-      title: "Sirah Nabawiyah: Kisah Perjuangan Rasulullah",
-      description: "Meneladani kisah perjuangan Rasulullah SAW dalam menyebarkan Islam.",
-      duration: "55:12",
-      date: "2024-05-28",
-      views: 765,
-      ratings: 4.9
-    },
-    {
-      id: "5",
-      title: "Tafsir Surah Al-Fatihah",
-      description: "Penjelasan mendalam tentang makna dan tafsir Surah Al-Fatihah.",
-      duration: "40:05",
-      date: "2024-05-20",
-      views: 654,
-      ratings: 4.8
+  // Initialize form
+  const form = useForm<VideoFormValues>({
+    resolver: zodResolver(videoFormSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      category: "",
+      duration: "",
+      file_url: "",
+      file_type: "",
+      file_size: 0
     }
-  ];
-  
+  });
+
+  // Fetch video data
+  const fetchVideos = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const { data, error } = await supabase
+        .from('media_files')
+        .select('*')
+        .like('file_type', 'video/%')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        throw error;
+      }
+      
+      setVideos(data || []);
+    } catch (err: any) {
+      console.error('Error fetching videos:', err);
+      setError(err.message || 'An error occurred while fetching video files');
+      toast({
+        variant: "destructive",
+        title: "Error fetching video files",
+        description: err.message || 'An error occurred while fetching video files',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchVideos();
+  }, []);
+
+  // Handle file upload complete
+  const handleFileUploadComplete = (fileUrl: string, fileType: string, fileSize: number) => {
+    form.setValue("file_url", fileUrl);
+    form.setValue("file_type", fileType);
+    form.setValue("file_size", fileSize);
+  };
+
+  // Handle form submission
+  const onSubmit = async (values: VideoFormValues) => {
+    try {
+      // Insert the new video record
+      const { data, error } = await supabase
+        .from('media_files')
+        .insert([{
+          title: values.title,
+          description: values.description,
+          file_url: values.file_url,
+          thumbnail_url: values.thumbnail_url || null,
+          file_type: values.file_type,
+          file_size: values.file_size,
+          duration: values.duration || null,
+          category: values.category || null
+        }])
+        .select();
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Reset form and close the dialog
+      form.reset();
+      setIsAddDialogOpen(false);
+      
+      // Update the video list
+      fetchVideos();
+      
+      toast({
+        title: "Video added successfully",
+        description: `${values.title} has been added to the video collection.`,
+      });
+    } catch (err: any) {
+      console.error('Error adding video:', err);
+      toast({
+        variant: "destructive",
+        title: "Error adding video",
+        description: err.message || 'An error occurred while adding the video',
+      });
+    }
+  };
+
+  // Handle video deletion
+  const handleDeleteVideo = async () => {
+    if (!selectedVideo) return;
+    
+    try {
+      // Delete the video record
+      const { error } = await supabase
+        .from('media_files')
+        .delete()
+        .eq('id', selectedVideo.id);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Extract the file path from the URL
+      const fileUrl = new URL(selectedVideo.file_url);
+      const filePath = fileUrl.pathname.split('/').pop();
+      
+      if (filePath) {
+        // Delete the file from storage
+        const { error: storageError } = await supabase.storage
+          .from('media-files')
+          .remove([filePath]);
+        
+        if (storageError) {
+          console.error('Error deleting file from storage:', storageError);
+        }
+      }
+      
+      // Close the dialog and reset the selected video
+      setIsDeleteDialogOpen(false);
+      setSelectedVideo(null);
+      
+      // Update the video list
+      fetchVideos();
+      
+      toast({
+        title: "Video deleted successfully",
+        description: `${selectedVideo.title} has been removed from the video collection.`,
+      });
+    } catch (err: any) {
+      console.error('Error deleting video:', err);
+      toast({
+        variant: "destructive",
+        title: "Error deleting video",
+        description: err.message || 'An error occurred while deleting the video',
+      });
+    }
+  };
+
+  // Filter videos based on search term
   const filteredVideos = videos.filter(video => 
     video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     video.description.toLowerCase().includes(searchTerm.toLowerCase())
@@ -112,55 +265,122 @@ export const AdminVideos = () => {
               Tambah Video
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
               <DialogTitle>Tambah Video Baru</DialogTitle>
               <DialogDescription>
                 Isi informasi video yang ingin ditambahkan ke koleksi.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Judul Video</Label>
-                <Input id="title" placeholder="Masukkan judul video" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Deskripsi</Label>
-                <Textarea 
-                  id="description" 
-                  placeholder="Masukkan deskripsi video"
-                  className="min-h-[100px]"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="video-file">File Video</Label>
-                  <Input id="video-file" type="file" accept="video/*" />
+            
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Judul Video</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Masukkan judul video" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Deskripsi</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              placeholder="Masukkan deskripsi video"
+                              className="min-h-[100px]"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid gap-2">
+                    <FormLabel>File Video</FormLabel>
+                    <FileUploader 
+                      onUploadComplete={handleFileUploadComplete}
+                      acceptedFileTypes="video/*"
+                      maxSizeMB={200}
+                    />
+                    {form.formState.errors.file_url && (
+                      <p className="text-sm font-medium text-destructive">
+                        {form.formState.errors.file_url.message}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="duration"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Durasi</FormLabel>
+                          <FormControl>
+                            <Input placeholder="HH:MM:SS" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kategori</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Kategori video" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="thumbnail_url"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL Thumbnail (opsional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://example.com/image.jpg" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="thumbnail">Thumbnail</Label>
-                  <Input id="thumbnail" type="file" accept="image/*" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="duration">Durasi</Label>
-                  <Input id="duration" placeholder="HH:MM:SS" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Kategori</Label>
-                  <Input id="category" placeholder="Kategori video" />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Batal
-              </Button>
-              <Button onClick={() => setIsAddDialogOpen(false)}>
-                Simpan
-              </Button>
-            </DialogFooter>
+                
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    Batal
+                  </Button>
+                  <Button type="submit" disabled={!form.formState.isValid}>
+                    Simpan
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
           </DialogContent>
         </Dialog>
       </div>
@@ -182,63 +402,121 @@ export const AdminVideos = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Judul</TableHead>
-                <TableHead>Durasi</TableHead>
-                <TableHead>Tanggal</TableHead>
-                <TableHead className="text-right">Views</TableHead>
-                <TableHead className="text-right">Rating</TableHead>
-                <TableHead className="text-right">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredVideos.length > 0 ? (
-                filteredVideos.map((video) => (
-                  <TableRow key={video.id}>
-                    <TableCell className="font-medium">{video.title}</TableCell>
-                    <TableCell>{video.duration}</TableCell>
-                    <TableCell>{new Date(video.date).toLocaleDateString('id-ID')}</TableCell>
-                    <TableCell className="text-right">{video.views}</TableCell>
-                    <TableCell className="text-right">{video.ratings}/5</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Aksi</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            <span>Lihat</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            <span>Edit</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Hapus</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          
+          {isLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Judul</TableHead>
+                  <TableHead>Durasi</TableHead>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead>Ukuran</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredVideos.length > 0 ? (
+                  filteredVideos.map((video) => (
+                    <TableRow key={video.id}>
+                      <TableCell className="font-medium">{video.title}</TableCell>
+                      <TableCell>{video.duration || "N/A"}</TableCell>
+                      <TableCell>
+                        {new Date(video.created_at).toLocaleDateString('id-ID')}
+                      </TableCell>
+                      <TableCell>{video.category || "N/A"}</TableCell>
+                      <TableCell>
+                        {video.file_size 
+                          ? `${(video.file_size / (1024 * 1024)).toFixed(2)} MB`
+                          : "N/A"
+                        }
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Aksi</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => {
+                                window.open(video.file_url, "_blank");
+                              }}
+                            >
+                              <Play className="mr-2 h-4 w-4" />
+                              <span>Putar</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                // Edit functionality would go here
+                                toast({
+                                  title: "Coming soon",
+                                  description: "Edit functionality will be available soon.",
+                                });
+                              }}
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              <span>Edit</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => {
+                                setSelectedVideo(video);
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Hapus</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      {searchTerm ? "Tidak ada video yang sesuai dengan pencarian." : "Belum ada video yang ditambahkan."}
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
-                    Tidak ada video yang ditemukan.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Konfirmasi Hapus</DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus video "{selectedVideo?.title}"? Tindakan ini tidak dapat dibatalkan.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteVideo}>
+              Hapus
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
