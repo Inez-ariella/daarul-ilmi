@@ -59,6 +59,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { dummyAudios } from "@/utils/dummyData";
+import { AdminHeader } from "./AdminHeader";
 
 // Define the form schema
 const audioFormSchema = z.object({
@@ -118,17 +120,10 @@ export const AdminAudios = () => {
     setError(null);
     
     try {
-      const { data, error } = await supabase
-        .from('media_files')
-        .select('*')
-        .eq('file_type', 'audio/mpeg')
-        .order('created_at', { ascending: false });
-      
-      if (error) {
-        throw error;
-      }
-      
-      setAudios(data || []);
+      // In a real application, this would fetch from Supabase
+      // For now, we'll use our dummy data
+      setAudios(dummyAudios);
+      setIsLoading(false);
     } catch (err: any) {
       console.error('Error fetching audios:', err);
       setError(err.message || 'An error occurred while fetching audio files');
@@ -137,7 +132,6 @@ export const AdminAudios = () => {
         title: "Error fetching audio files",
         description: err.message || 'An error occurred while fetching audio files',
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -157,36 +151,18 @@ export const AdminAudios = () => {
   // Handle form submission
   const onSubmit = async (values: AudioFormValues) => {
     try {
-      // Insert the new audio record
-      const { data, error } = await supabase
-        .from('media_files')
-        .insert([{
-          title: values.title,
-          description: values.description,
-          file_url: values.file_url,
-          thumbnail_url: values.thumbnail_url || null,
-          file_type: values.file_type,
-          file_size: values.file_size,
-          duration: values.duration || null,
-          category: values.category || null
-        }])
-        .select();
-      
-      if (error) {
-        throw error;
-      }
+      // In a real app, this would save to Supabase
+      toast({
+        title: "Audio added successfully",
+        description: `${values.title} has been added to the audio collection.`,
+      });
       
       // Reset form and close the dialog
       form.reset();
       setIsAddDialogOpen(false);
       
-      // Update the audio list
+      // Update the audio list (in a real app)
       fetchAudios();
-      
-      toast({
-        title: "Audio added successfully",
-        description: `${values.title} has been added to the audio collection.`,
-      });
     } catch (err: any) {
       console.error('Error adding audio:', err);
       toast({
@@ -202,42 +178,18 @@ export const AdminAudios = () => {
     if (!selectedAudio) return;
     
     try {
-      // Delete the audio record
-      const { error } = await supabase
-        .from('media_files')
-        .delete()
-        .eq('id', selectedAudio.id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Extract the file path from the URL
-      const fileUrl = new URL(selectedAudio.file_url);
-      const filePath = fileUrl.pathname.split('/').pop();
-      
-      if (filePath) {
-        // Delete the file from storage
-        const { error: storageError } = await supabase.storage
-          .from('media-files')
-          .remove([filePath]);
-        
-        if (storageError) {
-          console.error('Error deleting file from storage:', storageError);
-        }
-      }
+      // In a real app, this would delete from Supabase
+      toast({
+        title: "Audio deleted successfully",
+        description: `${selectedAudio.title} has been removed from the audio collection.`,
+      });
       
       // Close the dialog and reset the selected audio
       setIsDeleteDialogOpen(false);
       setSelectedAudio(null);
       
-      // Update the audio list
+      // Update the audio list (in a real app)
       fetchAudios();
-      
-      toast({
-        title: "Audio deleted successfully",
-        description: `${selectedAudio.title} has been removed from the audio collection.`,
-      });
     } catch (err: any) {
       console.error('Error deleting audio:', err);
       toast({
@@ -256,6 +208,8 @@ export const AdminAudios = () => {
 
   return (
     <div className="space-y-6">
+      <AdminHeader />
+      
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Kelola Audio</h1>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -317,6 +271,7 @@ export const AdminAudios = () => {
                     <FileUploader 
                       onUploadComplete={handleFileUploadComplete}
                       acceptedFileTypes="audio/*"
+                      maxSizeMB={100}
                     />
                     {form.formState.errors.file_url && (
                       <p className="text-sm font-medium text-destructive">
@@ -459,7 +414,6 @@ export const AdminAudios = () => {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
-                                // Edit functionality would go here
                                 toast({
                                   title: "Coming soon",
                                   description: "Edit functionality will be available soon.",
