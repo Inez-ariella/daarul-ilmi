@@ -64,20 +64,29 @@ export function FileUploader({
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
       
+      // Manual progress tracking
+      const interval = setInterval(() => {
+        setProgress(prev => {
+          const next = prev + 5;
+          return next > 95 ? 95 : next;
+        });
+      }, 200);
+      
       // Upload file to Supabase Storage
       const { data, error } = await supabase.storage
         .from(bucket)
         .upload(filePath, file, {
           cacheControl: '3600',
-          upsert: false,
-          onUploadProgress: (progress) => {
-            setProgress(Math.round((progress.loaded / progress.total) * 100));
-          }
+          upsert: false
         });
+      
+      clearInterval(interval);
       
       if (error) {
         throw error;
       }
+      
+      setProgress(100);
       
       // Get public URL for the uploaded file
       const { data: { publicUrl } } = supabase.storage
