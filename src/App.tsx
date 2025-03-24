@@ -16,6 +16,7 @@ import Audio from "./pages/Audio";
 import Hadith from "./pages/Hadith";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/hadith" element={<Hadith />} />
               <Route path="/hadith/:id" element={<Hadith />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/admin/*" element={<Admin />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
